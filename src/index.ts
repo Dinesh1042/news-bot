@@ -51,6 +51,7 @@ const getArticle = async () => {
     const summaryText = await getSummarizedText(text);
     const summaryKeywords = getKeywordFromSummary(summaryText);
 
+    browser.close()
     return {
       title: firstArticle.title,
       url: firstArticle.href,
@@ -59,7 +60,7 @@ const getArticle = async () => {
       keywords: summaryKeywords,
     };
   } catch (error) {
-    console.log(error);
+    throw new Error((error as Error).message || 'Something went wrong');
   }
 };
 
