@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "lodash": "^4.17.21",
-    "puppeteer": "^19.5.2"
+    "puppeteer": "^19.5.2",
+    "text-summarization": "^1.0.4"
   }
 }
