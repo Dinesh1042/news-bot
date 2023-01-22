@@ -1,13 +1,15 @@
+import { getAllAudioBase64 } from 'google-tts-api';
 import keywordExtractor from 'keyword-extractor';
 import _ from 'lodash';
 import puppeteer from 'puppeteer';
 // @ts-ignore
 import textSummary from 'text-summarization';
+import fs from 'fs';
 
 const newsUrl = 'http://feeds.bbci.co.uk/news/rss.xml';
 
-const getSummarizedText = (content: string): Promise<string> => {
-  return textSummary({ text: content }).then(
+const getSummarizedText = (title: string, content: string): Promise<string> => {
+  return textSummary({ text: content, maxNumSentences: 5, title }).then(
     ({ extractive }: { extractive: string[] }) => extractive.join(' ')
   );
 };
@@ -22,6 +24,12 @@ const getKeywordFromSummary = (content: string): string[] => {
   });
 };
 
+const getAudioBinary = (content: string): Promise<Buffer> => {
+  return getAllAudioBase64(content)
+    .then((s) => s.reduce((acc, { base64 }) => (acc += base64), ''))
+    .then((base64Audio) => Buffer.from(base64Audio, 'base64'));
+};
+
 const getArticle = async () => {
   try {
     const browser = await puppeteer.launch();
@@ -34,7 +42,7 @@ const getArticle = async () => {
         (await (await anchorLink.getProperty('textContent')).jsonValue()) || '',
       href: await (await anchorLink.getProperty('href')).jsonValue(),
     }));
-    const firstArticle = (await _.head(articles)) || { href: '', title: '' };
+    const firstArticle = (await articles[1]) || { href: '', title: '' };
 
     await page.goto(firstArticle.href);
     const textContentDiv = await page.$$('[data-component="text-block"]');
@@ -48,15 +56,15 @@ const getArticle = async () => {
     );
 
     const text = (await Promise.all(textContent)).join(' ');
-    const summaryText = await getSummarizedText(text);
+    const summaryText = await getSummarizedText(firstArticle.title, text);
     const summaryKeywords = getKeywordFromSummary(summaryText);
 
-    browser.close()
+    browser.close();
     return {
       title: firstArticle.title,
       url: firstArticle.href,
       content: text,
-      summaryText,
+      summary: summaryText,
       keywords: summaryKeywords,
     };
   } catch (error) {
@@ -66,5 +74,8 @@ const getArticle = async () => {
 
 (async () => {
   const article = await getArticle();
+  const audioBinary = await getAudioBinary(article.summary);
+
+
   console.log(article);
 })();
