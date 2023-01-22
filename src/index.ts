@@ -1,14 +1,25 @@
+import keywordExtractor from 'keyword-extractor';
 import _ from 'lodash';
 import puppeteer from 'puppeteer';
+// @ts-ignore
 import textSummary from 'text-summarization';
 
-// @ts-ignore
 const newsUrl = 'http://feeds.bbci.co.uk/news/rss.xml';
 
 const getSummarizedText = (content: string): Promise<string> => {
   return textSummary({ text: content }).then(
     ({ extractive }: { extractive: string[] }) => extractive.join(' ')
   );
+};
+
+const getKeywordFromSummary = (content: string): string[] => {
+  return keywordExtractor.extract(content, {
+    remove_duplicates: true,
+    remove_digits: true,
+    return_chained_words: true,
+    return_changed_case: true,
+    language: 'english',
+  });
 };
 
 const getArticle = async () => {
@@ -38,12 +49,14 @@ const getArticle = async () => {
 
     const text = (await Promise.all(textContent)).join(' ');
     const summaryText = await getSummarizedText(text);
+    const summaryKeywords = getKeywordFromSummary(summaryText);
 
     return {
       title: firstArticle.title,
       url: firstArticle.href,
       content: text,
       summaryText,
+      keywords: summaryKeywords,
     };
   } catch (error) {
     console.log(error);
